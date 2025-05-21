@@ -1,5 +1,7 @@
 "use client"
 
+import { CardFooter } from "@/components/ui/card"
+
 import type React from "react"
 
 import { useState, useEffect } from "react"
@@ -9,6 +11,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
   type CourseSearchParams,
   type CourseSearchResult,
   type DifficultyLevel,
@@ -16,10 +27,16 @@ import {
   type SortBy,
   type SortDirection,
   searchCourses,
+  enrollInCourse,
+  createPayment,
 } from "@/lib/api"
-import { Search, Clock, Calendar } from "lucide-react"
+import { Search, Clock, Calendar, GraduationCap, Book } from "lucide-react"
+import { ErrorMessage } from "@/components/error-message"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 export default function SearchCoursesPage() {
+  const router = useRouter()
   const [searchParams, setSearchParams] = useState<CourseSearchParams>({
     query: "",
     priceFilter: "ALL",
@@ -40,6 +57,19 @@ export default function SearchCoursesPage() {
 
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
+  const [enrollOpen, setEnrollOpen] = useState(false)
+  const [paymentOpen, setPaymentOpen] = useState(false)
+  const [selectedCourse, setSelectedCourse] = useState<any | null>(null)
+  const [paymentId, setPaymentId] = useState<string>("")
+  const [enrolling, setEnrolling] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const userId = process.env.NEXT_PUBLIC_USER_ID ? Number.parseInt(process.env.NEXT_PUBLIC_USER_ID) : 2
+
+  const [paymentFormData, setPaymentFormData] = useState({
+    amount: 0,
+    paymentDate: new Date().toISOString().split("T")[0],
+  })
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -47,6 +77,18 @@ export default function SearchCoursesPage() {
       ...prev,
       [name]: value,
     }))
+  }
+
+  const handlePaymentInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setPaymentFormData((prev) => ({
+      ...prev,
+      [name]: name === "amount" ? Number.parseFloat(value) : value,
+    }))
+  }
+
+  const handlePaymentIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPaymentId(e.target.value)
   }
 
   const handleSelectChange = (name: string, value: string) => {
@@ -76,6 +118,101 @@ export default function SearchCoursesPage() {
       ...prev,
       page: newPage,
     }))
+  }
+
+  const handleEnrollOpenChange = (open: boolean) => {
+    setEnrollOpen(open)
+    if (!open) {
+      setSelectedCourse(null)
+      setPaymentId("")
+      setError(null)
+      setSuccess(null)
+    }
+  }
+
+  const handlePaymentOpenChange = (open: boolean) => {
+    setPaymentOpen(open)
+    if (!open) {
+      resetPaymentForm()
+      setError(null)
+      setSuccess(null)
+    }
+  }
+
+  const resetPaymentForm = () => {
+    setPaymentFormData({
+      amount: 0,
+      paymentDate: new Date().toISOString().split("T")[0],
+    })
+  }
+
+  const handleEnroll = (course: any) => {
+    setSelectedCourse(course)
+    setEnrollOpen(true)
+  }
+
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const paymentData = {
+        userID: userId,
+        amount: paymentFormData.amount,
+        paymentDate: paymentFormData.paymentDate,
+      }
+
+      const newPayment = await createPayment(paymentData)
+      if (newPayment) {
+        setSuccess(`Pago realizado con éxito. ID de pago: ${newPayment.id}`)
+        setPaymentId(newPayment.id.toString())
+
+        setTimeout(() => {
+          setPaymentOpen(false)
+          // Volvemos a abrir el diálogo de inscripción
+          setEnrollOpen(true)
+        }, 2000)
+      }
+    } catch (err) {
+      setError("Error al realizar el pago. Por favor, intenta de nuevo.")
+      console.error("Error creating payment:", err)
+    }
+  }
+
+  const handleEnrollSubmit = async () => {
+    if (!selectedCourse) return
+
+    setEnrolling(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      // Validar que se haya ingresado un ID de pago si el curso no es gratuito
+      if (selectedCourse.price > 0 && !paymentId) {
+        throw new Error("Debes ingresar un ID de pago para inscribirte en este curso.")
+      }
+
+      const enrollmentData = {
+        userId,
+        courseId: selectedCourse.id,
+        enrollmentDate: new Date().toISOString().split("T")[0],
+        paymentId: paymentId ? Number.parseInt(paymentId) : undefined,
+      }
+
+      await enrollInCourse(enrollmentData)
+      setSuccess("¡Te has inscrito exitosamente en este curso!")
+
+      // Redirigir a mis cursos después de 2 segundos
+      setTimeout(() => {
+        router.push("/mis-cursos")
+      }, 2000)
+    } catch (err: any) {
+      setError(err.message || "Error al inscribirse en el curso")
+      console.error("Error enrolling in course:", err)
+    } finally {
+      setEnrolling(false)
+    }
   }
 
   useEffect(() => {
@@ -202,6 +339,108 @@ export default function SearchCoursesPage() {
         </CardContent>
       </Card>
 
+      {/* Diálogo de inscripción */}
+      <Dialog open={enrollOpen} onOpenChange={handleEnrollOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Inscripción en {selectedCourse?.title}</DialogTitle>
+            <DialogDescription>
+              {selectedCourse?.price === 0
+                ? "Este curso es gratuito. Puedes inscribirte inmediatamente."
+                : "Este curso requiere un pago. Ingresa el ID de un pago existente o realiza un nuevo pago."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {error && <ErrorMessage message={error} />}
+          {success && <div className="bg-green-100 text-green-800 p-3 rounded-md mb-4">{success}</div>}
+
+          {selectedCourse && selectedCourse.price > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <span className="font-semibold">Precio del curso:</span>
+                <span className="font-bold">${selectedCourse.price.toFixed(2)}</span>
+              </div>
+
+              <div className="grid gap-4">
+                <div>
+                  <Label htmlFor="paymentId" className="mb-2 block">
+                    ID de Pago
+                  </Label>
+                  <Input
+                    id="paymentId"
+                    type="number"
+                    placeholder="Ingresa el ID de un pago existente"
+                    value={paymentId}
+                    onChange={handlePaymentIdChange}
+                  />
+                </div>
+
+                <div className="text-center">
+                  <p className="text-sm text-gray-500 mb-2">- o -</p>
+                </div>
+
+                <Dialog open={paymentOpen} onOpenChange={handlePaymentOpenChange}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                      Realizar un Nuevo Pago
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Realizar Nuevo Pago</DialogTitle>
+                      <DialogDescription>
+                        Completa los detalles del pago para poder inscribirte en cursos de pago.
+                      </DialogDescription>
+                    </DialogHeader>
+                    {error && <ErrorMessage message={error} />}
+                    {success && <div className="bg-green-100 text-green-800 p-3 rounded-md mb-4">{success}</div>}
+                    <form onSubmit={handlePaymentSubmit}>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="amount">Monto</Label>
+                          <Input
+                            id="amount"
+                            name="amount"
+                            type="number"
+                            step="0.01"
+                            value={paymentFormData.amount}
+                            onChange={handlePaymentInputChange}
+                            required
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="paymentDate">Fecha de Pago</Label>
+                          <Input
+                            id="paymentDate"
+                            name="paymentDate"
+                            type="date"
+                            value={paymentFormData.paymentDate}
+                            onChange={handlePaymentInputChange}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button type="submit">Realizar Pago</Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              onClick={handleEnrollSubmit}
+              disabled={enrolling || (selectedCourse && selectedCourse.price > 0 && !paymentId)}
+            >
+              {enrolling ? "Inscribiendo..." : "Confirmar Inscripción"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {searched && (
         <>
           <div className="flex justify-between items-center mb-4">
@@ -260,6 +499,18 @@ export default function SearchCoursesPage() {
                         )}
                       </div>
                     </CardContent>
+                    <CardFooter className="flex justify-end space-x-2 pt-0">
+                      <Link href={`/cursos/${course.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Book className="h-4 w-4 mr-1" />
+                          Ver Detalle
+                        </Button>
+                      </Link>
+                      <Button variant="default" size="sm" onClick={() => handleEnroll(course)}>
+                        <GraduationCap className="h-4 w-4 mr-1" />
+                        Inscribirme
+                      </Button>
+                    </CardFooter>
                   </Card>
                 ))}
               </div>

@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -22,32 +23,35 @@ import {
   type Course,
   type Category,
   type User,
-  type Content,
   getCourses,
   getCategories,
   getUsers,
   createCourse,
   updateCourse,
   deleteCourse,
-  getContentsByCourse,
-  downloadContent,
-  uploadContent,
-  deleteContent,
+  enrollInCourse,
+  createPayment,
 } from "@/lib/api"
-import { Edit, Trash2, Plus, Clock, Calendar, FileText, Download, Upload } from "lucide-react"
-import { LoadingSpinner } from "@/components/loading-spinner"
+import { Edit, Trash2, Plus, Clock, Calendar, Book, GraduationCap } from "lucide-react"
+import Link from "next/link"
+import { ErrorMessage } from "@/components/error-message"
 
 export default function CoursesPage() {
+  const router = useRouter()
   const [courses, setCourses] = useState<Course[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [instructors, setInstructors] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
+  const [enrollOpen, setEnrollOpen] = useState(false)
+  const [paymentOpen, setPaymentOpen] = useState(false)
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
-  const [downloadingContent, setDownloadingContent] = useState<number | null>(null)
-  const [uploadingContent, setUploadingContent] = useState(false)
-  const [newContentFile, setNewContentFile] = useState<File | null>(null)
-  const [newContentType, setNewContentType] = useState("DOCUMENTO")
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
+  const [paymentId, setPaymentId] = useState<string>("")
+  const [enrolling, setEnrolling] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const userId = process.env.NEXT_PUBLIC_USER_ID ? Number.parseInt(process.env.NEXT_PUBLIC_USER_ID) : 2
 
   const [formData, setFormData] = useState({
     title: "",
@@ -62,23 +66,24 @@ export default function CoursesPage() {
     durationInHours: 0,
   })
 
+  const [paymentFormData, setPaymentFormData] = useState({
+    amount: 0,
+    paymentDate: new Date().toISOString().split("T")[0],
+  })
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
-      const [coursesData, categoriesData, usersData] = await Promise.all([getCourses(), getCategories(), getUsers()])
-      
-      // Cargar contenidos para cada curso
-      const coursesWithContents = await Promise.all(
-        coursesData.map(async (course) => {
-          const contents = await getContentsByCourse(course.id)
-          return { ...course, contents }
-        })
-      )
-      
-      setCourses(coursesWithContents)
-      setCategories(categoriesData)
-      setInstructors(usersData)
-      setLoading(false)
+      try {
+        const [coursesData, categoriesData, usersData] = await Promise.all([getCourses(), getCategories(), getUsers()])
+        setCourses(coursesData)
+        setCategories(categoriesData)
+        setInstructors(usersData)
+      } catch (err) {
+        console.error("Error fetching data:", err)
+      } finally {
+        setLoading(false)
+      }
     }
 
     fetchData()
@@ -91,6 +96,18 @@ export default function CoursesPage() {
       [name]:
         name === "price" || name === "average_grade" || name === "durationInHours" ? Number.parseFloat(value) : value,
     }))
+  }
+
+  const handlePaymentInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setPaymentFormData((prev) => ({
+      ...prev,
+      [name]: name === "amount" ? Number.parseFloat(value) : value,
+    }))
+  }
+
+  const handlePaymentIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPaymentId(e.target.value)
   }
 
   const handleSelectChange = (name: string, value: string) => {
@@ -116,10 +133,36 @@ export default function CoursesPage() {
     setEditingCourse(null)
   }
 
+  const resetPaymentForm = () => {
+    setPaymentFormData({
+      amount: 0,
+      paymentDate: new Date().toISOString().split("T")[0],
+    })
+  }
+
   const handleOpenChange = (open: boolean) => {
     setOpen(open)
     if (!open) {
       resetForm()
+    }
+  }
+
+  const handleEnrollOpenChange = (open: boolean) => {
+    setEnrollOpen(open)
+    if (!open) {
+      setSelectedCourse(null)
+      setPaymentId("")
+      setError(null)
+      setSuccess(null)
+    }
+  }
+
+  const handlePaymentOpenChange = (open: boolean) => {
+    setPaymentOpen(open)
+    if (!open) {
+      resetPaymentForm()
+      setError(null)
+      setSuccess(null)
     }
   }
 
@@ -149,6 +192,11 @@ export default function CoursesPage() {
     }
   }
 
+  const handleEnroll = (course: Course) => {
+    setSelectedCourse(course)
+    setEnrollOpen(true)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -168,6 +216,70 @@ export default function CoursesPage() {
     resetForm()
   }
 
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const paymentData = {
+        userID: userId,
+        amount: paymentFormData.amount,
+        paymentDate: paymentFormData.paymentDate,
+      }
+
+      const newPayment = await createPayment(paymentData)
+      if (newPayment) {
+        setSuccess(`Pago realizado con éxito. ID de pago: ${newPayment.id}`)
+        setPaymentId(newPayment.id.toString())
+
+        setTimeout(() => {
+          setPaymentOpen(false)
+          // Volvemos a abrir el diálogo de inscripción
+          setEnrollOpen(true)
+        }, 2000)
+      }
+    } catch (err) {
+      setError("Error al realizar el pago. Por favor, intenta de nuevo.")
+      console.error("Error creating payment:", err)
+    }
+  }
+
+  const handleEnrollSubmit = async () => {
+    if (!selectedCourse) return
+
+    setEnrolling(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      // Validar que se haya ingresado un ID de pago si el curso no es gratuito
+      if (selectedCourse.price > 0 && !paymentId) {
+        throw new Error("Debes ingresar un ID de pago para inscribirte en este curso.")
+      }
+
+      const enrollmentData = {
+        userId,
+        courseId: selectedCourse.id,
+        enrollmentDate: new Date().toISOString().split("T")[0],
+        paymentId: paymentId ? Number.parseInt(paymentId) : undefined,
+      }
+
+      await enrollInCourse(enrollmentData)
+      setSuccess("¡Te has inscrito exitosamente en este curso!")
+
+      // Redirigir a mis cursos después de 2 segundos
+      setTimeout(() => {
+        router.push("/mis-cursos")
+      }, 2000)
+    } catch (err: any) {
+      setError(err.message || "Error al inscribirse en el curso")
+      console.error("Error enrolling in course:", err)
+    } finally {
+      setEnrolling(false)
+    }
+  }
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return "No disponible"
     const date = new Date(dateString)
@@ -178,75 +290,8 @@ export default function CoursesPage() {
     })
   }
 
-  const handleDownloadContent = async (contentId: number) => {
-    try {
-      setDownloadingContent(contentId)
-      await downloadContent(contentId)
-    } catch (error) {
-      console.error('Error al descargar el archivo:', error)
-      alert('Error al descargar el archivo')
-    } finally {
-      setDownloadingContent(null)
-    }
-  }
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setNewContentFile(e.target.files[0])
-    }
-  }
-
-  const handleUploadContent = async (courseId: number) => {
-    if (!newContentFile) return
-
-    try {
-      setUploadingContent(true)
-      const content = await uploadContent({
-        file: newContentFile,
-        type: newContentType,
-        courseId,
-      })
-
-      if (content) {
-        setCourses(courses.map(course => {
-          if (course.id === courseId) {
-            return {
-              ...course,
-              contents: [...(course.contents || []), content]
-            }
-          }
-          return course
-        }))
-        setNewContentFile(null)
-        setNewContentType("DOCUMENTO")
-      }
-    } catch (error) {
-      console.error('Error al subir el contenido:', error)
-      alert('Error al subir el contenido')
-    } finally {
-      setUploadingContent(false)
-    }
-  }
-
-  const handleDeleteContent = async (courseId: number, contentId: number) => {
-    if (window.confirm("¿Estás seguro de que deseas eliminar este contenido?")) {
-      const success = await deleteContent(contentId)
-      if (success) {
-        setCourses(courses.map(course => {
-          if (course.id === courseId) {
-            return {
-              ...course,
-              contents: course.contents?.filter(content => content.id !== contentId) || []
-            }
-          }
-          return course
-        }))
-      }
-    }
-  }
-
   if (loading) {
-    return <LoadingSpinner />
+    return <div className="text-center py-10">Cargando cursos...</div>
   }
 
   return (
@@ -402,98 +447,6 @@ export default function CoursesPage() {
                   />
                 </div>
               </div>
-
-              {/* Sección de Contenidos */}
-              {editingCourse && (
-                <div className="mt-6 border-t pt-4">
-                  <h3 className="text-lg font-medium mb-4">Contenidos del Curso</h3>
-                  
-                  {/* Lista de contenidos existentes */}
-                  {editingCourse.contents && editingCourse.contents.length > 0 && (
-                    <div className="space-y-2 mb-4">
-                      {editingCourse.contents.map((content) => (
-                        <div key={content.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-                          <div className="flex items-center">
-                            <FileText className="h-4 w-4 mr-2" />
-                            <span className="text-sm">{content.type}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDownloadContent(content.id)}
-                              disabled={downloadingContent === content.id}
-                            >
-                              {downloadingContent === content.id ? (
-                                <div className="h-4 w-4">
-                                  <LoadingSpinner />
-                                </div>
-                              ) : (
-                                <Download className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteContent(editingCourse.id, content.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Formulario para agregar nuevo contenido */}
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="contentType">Tipo de Contenido</Label>
-                        <Select
-                          value={newContentType}
-                          onValueChange={setNewContentType}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona un tipo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="DOCUMENTO">Documento</SelectItem>
-                            <SelectItem value="VIDEO">Video</SelectItem>
-                            <SelectItem value="IMAGEN">Imagen</SelectItem>
-                            <SelectItem value="AUDIO">Audio</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="contentFile">Archivo</Label>
-                        <Input
-                          id="contentFile"
-                          type="file"
-                          onChange={handleFileChange}
-                          accept=".pdf,.doc,.docx,.mp4,.jpg,.jpeg,.png,.mp3"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={() => handleUploadContent(editingCourse.id)}
-                      disabled={!newContentFile || uploadingContent}
-                      className="w-full"
-                    >
-                      {uploadingContent ? (
-                        <div className="h-4 w-4 mr-2">
-                          <LoadingSpinner />
-                        </div>
-                      ) : (
-                        <Upload className="h-4 w-4 mr-2" />
-                      )}
-                      Subir Contenido
-                    </Button>
-                  </div>
-                </div>
-              )}
-
               <DialogFooter>
                 <Button type="submit">{editingCourse ? "Actualizar" : "Crear"}</Button>
               </DialogFooter>
@@ -501,6 +454,108 @@ export default function CoursesPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Diálogo de inscripción */}
+      <Dialog open={enrollOpen} onOpenChange={handleEnrollOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Inscripción en {selectedCourse?.title}</DialogTitle>
+            <DialogDescription>
+              {selectedCourse?.price === 0
+                ? "Este curso es gratuito. Puedes inscribirte inmediatamente."
+                : "Este curso requiere un pago. Ingresa el ID de un pago existente o realiza un nuevo pago."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {error && <ErrorMessage message={error} />}
+          {success && <div className="bg-green-100 text-green-800 p-3 rounded-md mb-4">{success}</div>}
+
+          {selectedCourse && selectedCourse.price > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <span className="font-semibold">Precio del curso:</span>
+                <span className="font-bold">${selectedCourse.price.toFixed(2)}</span>
+              </div>
+
+              <div className="grid gap-4">
+                <div>
+                  <Label htmlFor="paymentId" className="mb-2 block">
+                    ID de Pago
+                  </Label>
+                  <Input
+                    id="paymentId"
+                    type="number"
+                    placeholder="Ingresa el ID de un pago existente"
+                    value={paymentId}
+                    onChange={handlePaymentIdChange}
+                  />
+                </div>
+
+                <div className="text-center">
+                  <p className="text-sm text-gray-500 mb-2">- o -</p>
+                </div>
+
+                <Dialog open={paymentOpen} onOpenChange={handlePaymentOpenChange}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                      Realizar un Nuevo Pago
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Realizar Nuevo Pago</DialogTitle>
+                      <DialogDescription>
+                        Completa los detalles del pago para poder inscribirte en cursos de pago.
+                      </DialogDescription>
+                    </DialogHeader>
+                    {error && <ErrorMessage message={error} />}
+                    {success && <div className="bg-green-100 text-green-800 p-3 rounded-md mb-4">{success}</div>}
+                    <form onSubmit={handlePaymentSubmit}>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="amount">Monto</Label>
+                          <Input
+                            id="amount"
+                            name="amount"
+                            type="number"
+                            step="0.01"
+                            value={paymentFormData.amount}
+                            onChange={handlePaymentInputChange}
+                            required
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="paymentDate">Fecha de Pago</Label>
+                          <Input
+                            id="paymentDate"
+                            name="paymentDate"
+                            type="date"
+                            value={paymentFormData.paymentDate}
+                            onChange={handlePaymentInputChange}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button type="submit">Realizar Pago</Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              onClick={handleEnrollSubmit}
+              disabled={enrolling || (selectedCourse && selectedCourse.price > 0 && !paymentId)}
+            >
+              {enrolling ? "Inscribiendo..." : "Confirmar Inscripción"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {courses.length === 0 ? (
         <div className="text-center py-10">
@@ -519,7 +574,9 @@ export default function CoursesPage() {
               <CardContent>
                 <p className="text-sm text-gray-600 line-clamp-3 mb-2">{course.description}</p>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium">Precio: ${course.price.toFixed(2)}</span>
+                  <span className="font-medium">
+                    Precio: {course.price === 0 ? "Gratis" : `$${course.price.toFixed(2)}`}
+                  </span>
                   <span className="font-medium">Calificación: {course.average_grade}/5</span>
                 </div>
                 <div className="flex items-center text-sm text-gray-600 mb-2">
@@ -560,34 +617,6 @@ export default function CoursesPage() {
                     </span>
                   )}
                 </div>
-                
-                {/* Sección de Contenidos */}
-                {course.contents && course.contents.length > 0 && (
-                  <div className="mt-4 border-t pt-4">
-                    <h4 className="text-sm font-medium mb-2">Contenidos del Curso:</h4>
-                    <div className="space-y-2">
-                      {course.contents.map((content) => (
-                        <div 
-                          key={content.id} 
-                          className="flex items-center justify-between text-sm text-gray-600 hover:bg-gray-50 p-2 rounded-md cursor-pointer transition-colors"
-                          onClick={() => handleDownloadContent(content.id)}
-                        >
-                          <div className="flex items-center">
-                            <FileText className="h-4 w-4 mr-2" />
-                            <span>{content.type}</span>
-                          </div>
-                          {downloadingContent === content.id ? (
-                            <div className="h-4 w-4">
-                              <LoadingSpinner />
-                            </div>
-                          ) : (
-                            <Download className="h-4 w-4 text-gray-400" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </CardContent>
               <CardFooter className="flex justify-end space-x-2 pt-0">
                 <Button variant="outline" size="sm" onClick={() => handleEdit(course)}>
@@ -597,6 +626,16 @@ export default function CoursesPage() {
                 <Button variant="destructive" size="sm" onClick={() => handleDelete(course.id)}>
                   <Trash2 className="h-4 w-4 mr-1" />
                   Eliminar
+                </Button>
+                <Link href={`/cursos/${course.id}`}>
+                  <Button variant="outline" size="sm">
+                    <Book className="h-4 w-4 mr-1" />
+                    Ver Detalle
+                  </Button>
+                </Link>
+                <Button variant="default" size="sm" onClick={() => handleEnroll(course)}>
+                  <GraduationCap className="h-4 w-4 mr-1" />
+                  Inscribirme
                 </Button>
               </CardFooter>
             </Card>

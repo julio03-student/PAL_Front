@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { type User, getUsers, createUser } from "@/lib/api"
 import { Plus, UserIcon } from "lucide-react"
-import { LoadingSpinner } from "@/components/loading-spinner"
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
@@ -87,7 +86,7 @@ export default function UsersPage() {
   }
 
   if (loading) {
-    return <LoadingSpinner />
+    return <div className="text-center py-10">Cargando usuarios...</div>
   }
 
   return (

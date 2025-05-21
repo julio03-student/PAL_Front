@@ -1,7 +1,5 @@
-// Configuración de la API
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000', 10)
-const UPLOAD_MAX_SIZE = parseInt(process.env.NEXT_PUBLIC_UPLOAD_MAX_SIZE || '10485760', 10)
+// Constante para la URL base de la API
+const API_BASE_URL = "/api"
 
 // Tipos de datos
 export interface Role {
@@ -22,15 +20,6 @@ export interface Category {
   name: string
 }
 
-export interface Content {
-  id: number
-  type: string
-  courseId: number
-  fileUrl?: string
-  createdAt: string
-  updatedAt: string
-}
-
 export interface Course {
   id: number
   title: string
@@ -43,7 +32,20 @@ export interface Course {
   difficultyLevel?: string
   publicationDate?: string
   durationInHours?: number
-  contents?: Content[]
+}
+
+export interface Payment {
+  id: number
+  user: User
+  amount: number
+  paymentDate: string
+}
+
+export interface Enrollment {
+  id: number
+  user: User
+  course: Course
+  enrollmentDate: string
 }
 
 export type DifficultyLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "ALL"
@@ -80,11 +82,6 @@ export interface CourseSearchResult {
   page: number
   pageSize: number
   totalPages: number
-}
-
-// Función para validar el tamaño del archivo
-const validateFileSize = (file: File): boolean => {
-  return file.size <= UPLOAD_MAX_SIZE
 }
 
 // Funciones para usuarios
@@ -207,7 +204,7 @@ export async function getCourses(): Promise<Course[]> {
 export async function searchCourses(params: CourseSearchParams): Promise<CourseSearchResult> {
   try {
     const response = await fetch(`${API_BASE_URL}/courses/search`, {
-      method: "POST",
+      method: "POST", // Cambiado de GET a POST
       headers: {
         "Content-Type": "application/json",
       },
@@ -296,67 +293,93 @@ export async function deleteCourse(id: number): Promise<boolean> {
   }
 }
 
-// Funciones para contenido
-export async function getContentsByCourse(courseId: number): Promise<Content[]> {
+// Funciones para pagos
+export async function createPayment(paymentData: {
+  userID: number
+  amount: number
+  paymentDate: string
+}): Promise<Payment | null> {
   try {
-    console.log("Enviando solicitud para obtener contenido del curso:", courseId)
-    const response = await fetch(`${API_BASE_URL}/content/course/${courseId}`)
-    const data = await response.json()
-    console.log("Respuesta de obtener contenido del curso:", data)
-    return data.data || []
-  } catch (error) {
-    console.error("Error fetching contents:", error)
-    return []
-  }
-}
-
-export async function uploadContent(contentData: {
-  file: File
-  type: string
-  courseId: number
-}): Promise<Content | null> {
-  try {
-    if (!validateFileSize(contentData.file)) {
-      throw new Error(`El archivo excede el tamaño máximo permitido de ${UPLOAD_MAX_SIZE / 1024 / 1024}MB`)
-    }
-
-    const formData = new FormData()
-    formData.append('file', contentData.file)
-    formData.append('type', contentData.type)
-    formData.append('courseId', contentData.courseId.toString())
-
-    const response = await fetch(`${API_BASE_URL}/content/update`, {
-      method: 'POST',
-      body: formData,
+    const response = await fetch(`${API_BASE_URL}/payments/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(paymentData),
     })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error al crear pago. Status:", response.status, "Respuesta:", errorText)
+      throw new Error(`Error al crear pago: ${response.status} ${errorText}`)
+    }
 
     const data = await response.json()
     return data.data ? data.data[0] : null
   } catch (error) {
-    console.error("Error uploading content:", error)
+    console.error("Error creating payment:", error)
     return null
   }
 }
 
-export async function deleteContent(contentId: number): Promise<boolean> {
+export async function getPayments(): Promise<Payment[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/content/delete/${contentId}`, {
-      method: 'DELETE',
-    })
-
-    return response.status === 204
+    const response = await fetch(`${API_BASE_URL}/payments/all`)
+    const data = await response.json()
+    return data.data || []
   } catch (error) {
-    console.error("Error deleting content:", error)
-    return false
+    console.error("Error fetching payments:", error)
+    return []
   }
 }
 
-export async function downloadContent(contentId: number): Promise<void> {
+export async function getPaymentById(id: number): Promise<Payment | null> {
   try {
-    // Abrir el endpoint de descarga en una nueva ventana/pestaña
-    window.open(`${API_BASE_URL}/content/download/${contentId}`, '_blank')
+    const response = await fetch(`${API_BASE_URL}/payments/${id}`)
+    const data = await response.json()
+    return data.data ? data.data[0] : null
   } catch (error) {
-    console.error("Error downloading content:", error)
-    throw new Error('Error al descargar el archivo')
+    console.error("Error fetching payment:", error)
+    return null
+  }
+}
+
+// Funciones para inscripciones
+export async function enrollInCourse(enrollmentData: {
+  userId: number
+  courseId: number
+  enrollmentDate: string
+  paymentId?: number
+}): Promise<Enrollment | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/enrollments/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(enrollmentData),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Error al inscribirse en el curso")
+    }
+
+    const data = await response.json()
+    return data.data ? data.data[0] : null
+  } catch (error) {
+    console.error("Error enrolling in course:", error)
+    throw error
+  }
+}
+
+export async function getMyEnrollments(userId: number): Promise<Enrollment[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/enrollments/my-courses?userId=${userId}`)
+    const data = await response.json()
+    return data.data || []
+  } catch (error) {
+    console.error("Error fetching enrollments:", error)
+    return []
   }
 }

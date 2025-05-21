@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Book, Layers, Users, Search, FileText } from "lucide-react"
+import { Book, Layers, Users, Search, GraduationCap } from "lucide-react"
 
 export function Navbar() {
   const pathname = usePathname()
@@ -13,20 +13,18 @@ export function Navbar() {
         <div className="flex items-center justify-between">
           <div className="flex items-center justify-start">
             <Link href="/" className="flex ml-2 md:mr-24">
-              <span className="self-center text-xl font-semibold sm:text-2xl whitespace-nowrap text-primary-700">
-                PAL
-              </span>
+              <span className="self-center text-xl font-semibold sm:text-2xl whitespace-nowrap">Portal Educativo</span>
             </Link>
           </div>
         </div>
       </div>
       <div className="px-3 py-2 border-t border-gray-200 lg:px-5 bg-gray-50">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 overflow-x-auto pb-2">
           <Link
             href="/cursos"
             className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg ${
               pathname === "/cursos"
-                ? "text-white bg-primary-600 hover:bg-primary-700"
+                ? "text-white bg-primary-500 hover:bg-primary-600"
                 : "text-gray-900 hover:bg-gray-100"
             }`}
           >
@@ -34,10 +32,21 @@ export function Navbar() {
             <span>Cursos</span>
           </Link>
           <Link
+            href="/mis-cursos"
+            className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg ${
+              pathname === "/mis-cursos"
+                ? "text-white bg-primary-500 hover:bg-primary-600"
+                : "text-gray-900 hover:bg-gray-100"
+            }`}
+          >
+            <GraduationCap className="w-5 h-5 mr-2" />
+            <span>Mis Cursos</span>
+          </Link>
+          <Link
             href="/cursos/buscar"
             className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg ${
               pathname.includes("/cursos/buscar")
-                ? "text-white bg-primary-600 hover:bg-primary-700"
+                ? "text-white bg-primary-500 hover:bg-primary-600"
                 : "text-gray-900 hover:bg-gray-100"
             }`}
           >
@@ -48,7 +57,7 @@ export function Navbar() {
             href="/categorias"
             className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg ${
               pathname.includes("/categorias")
-                ? "text-white bg-primary-600 hover:bg-primary-700"
+                ? "text-white bg-primary-500 hover:bg-primary-600"
                 : "text-gray-900 hover:bg-gray-100"
             }`}
           >
@@ -59,23 +68,12 @@ export function Navbar() {
             href="/usuarios"
             className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg ${
               pathname.includes("/usuarios")
-                ? "text-white bg-primary-600 hover:bg-primary-700"
+                ? "text-white bg-primary-500 hover:bg-primary-600"
                 : "text-gray-900 hover:bg-gray-100"
             }`}
           >
             <Users className="w-5 h-5 mr-2" />
             <span>Usuarios</span>
-          </Link>
-          <Link
-            href="/examenes"
-            className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg ${
-              pathname.includes("/examenes")
-                ? "text-white bg-primary-600 hover:bg-primary-700"
-                : "text-gray-900 hover:bg-gray-100"
-            }`}
-          >
-            <FileText className="w-5 h-5 mr-2" />
-            <span>Exámenes</span>
           </Link>
         </div>
       </div>

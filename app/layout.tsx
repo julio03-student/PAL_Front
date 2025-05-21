@@ -1,6 +1,7 @@
 import type React from "react"
+import { Navbar } from "@/components/navbar"
+import { Sidebar } from "@/components/sidebar"
 import { ThemeProvider } from "@/components/theme-provider"
-import { Navigation } from "@/components/navigation"
 import "@/app/globals.css"
 
 export default function RootLayout({
@@ -12,8 +13,9 @@ export default function RootLayout({
     <html lang="es">
       <body>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <Navigation />
-          <div className="p-4 sm:ml-64 pt-20">
+          <Navbar />
+          <Sidebar />
+          <div className="p-4 sm:ml-64 pt-28">
             <div className="p-4 border-2 border-gray-200 border-dashed rounded-lg">{children}</div>
           </div>
         </ThemeProvider>
