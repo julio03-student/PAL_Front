@@ -1,0 +1,388 @@
+{
+    "info": {
+      "name": "PAL API",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+      {
+        "name": "Usuarios",
+        "item": [
+          {
+            "name": "Crear Usuario",
+            "request": {
+              "method": "POST",
+              "url": "{{baseUrl}}/api/users/create",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"username\": \"usuario1\",\n    \"password\": \"contraseña123\",\n    \"email\": \"usuario1@ejemplo.com\",\n    \"roles\": [1, 2]\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "Obtener Todos los Usuarios",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/users/all"
+            }
+          },
+          {
+            "name": "Obtener Usuario por ID",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/users/1"
+            }
+          },
+          {
+            "name": "Actualizar Usuario",
+            "request": {
+              "method": "PUT",
+              "url": "{{baseUrl}}/api/users/update/1",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"username\": \"usuario1_actualizado\",\n    \"email\": \"usuario1_actualizado@ejemplo.com\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "Eliminar Usuario",
+            "request": {
+              "method": "DELETE",
+              "url": "{{baseUrl}}/api/users/delete/1"
+            }
+          },
+          {
+            "name": "Obtener Usuarios por Rol",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/users/by-role/INSTRUCTOR"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Cursos",
+        "item": [
+          {
+            "name": "Crear Curso",
+            "request": {
+              "method": "POST",
+              "url": "{{baseUrl}}/api/courses/create",
+              "body": {
+                "mode": "formdata",
+                "formdata": [
+                  {
+                    "key": "title",
+                    "value": "Curso de Spring Boot",
+                    "type": "text"
+                  },
+                  {
+                    "key": "description",
+                    "value": "Aprende Spring Boot desde cero",
+                    "type": "text"
+                  },
+                  {
+                    "key": "categoryId",
+                    "value": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "Obtener Todos los Cursos",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/courses/all"
+            }
+          },
+          {
+            "name": "Obtener Curso por ID",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/courses/1"
+            }
+          },
+          {
+            "name": "Actualizar Curso",
+            "request": {
+              "method": "PUT",
+              "url": "{{baseUrl}}/api/courses/update/1",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"title\": \"Curso Actualizado\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "Eliminar Curso",
+            "request": {
+              "method": "DELETE",
+              "url": "{{baseUrl}}/api/courses/delete/1"
+            }
+          },
+          {
+            "name": "Obtener Cursos por Categoría",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/courses/category/Programación"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Contenido",
+        "item": [
+          {
+            "name": "Crear/Actualizar Contenido",
+            "request": {
+              "method": "POST",
+              "url": "{{baseUrl}}/api/content/update",
+              "body": {
+                "mode": "formdata",
+                "formdata": [
+                  {
+                    "key": "file",
+                    "type": "file",
+                    "src": "/ruta/al/archivo"
+                  },
+                  {
+                    "key": "type",
+                    "value": "DOCUMENTO",
+                    "type": "text"
+                  },
+                  {
+                    "key": "courseId",
+                    "value": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "Obtener Todos los Contenidos",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/content/all"
+            }
+          },
+          {
+            "name": "Obtener Contenido por ID",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/content/1"
+            }
+          },
+          {
+            "name": "Descargar Archivo",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/content/download/1"
+            }
+          },
+          {
+            "name": "Actualizar Contenido",
+            "request": {
+              "method": "PUT",
+              "url": "{{baseUrl}}/api/content/update/1",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"type\": \"DOCUMENTO\",\n    \"courseId\": 1\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "Eliminar Contenido",
+            "request": {
+              "method": "DELETE",
+              "url": "{{baseUrl}}/api/content/delete/1"
+            }
+          },
+          {
+            "name": "Obtener Contenidos por Curso",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/content/course/1"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Exámenes",
+        "item": [
+          {
+            "name": "Crear Examen",
+            "request": {
+              "method": "POST",
+              "url": "{{baseUrl}}/api/exams/create",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"title\": \"Examen Final\",\n    \"courseId\": 1,\n    \"questions\": [\n        {\n            \"text\": \"¿Qué es Spring Boot?\",\n            \"options\": [\n                {\n                    \"text\": \"Un framework\",\n                    \"isCorrect\": true\n                },\n                {\n                    \"text\": \"Un lenguaje\",\n                    \"isCorrect\": false\n                }\n            ]\n        }\n    ]\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "Obtener Todos los Exámenes",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/exams/all"
+            }
+          },
+          {
+            "name": "Obtener Examen por ID",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/exams/1"
+            }
+          },
+          {
+            "name": "Obtener Resultado de Examen",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/exams/results/1?studentId=1"
+            }
+          },
+          {
+            "name": "Enviar Respuestas de Examen",
+            "request": {
+              "method": "POST",
+              "url": "{{baseUrl}}/api/exams/submit/1",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"studentId\": 1,\n    \"answers\": [\n        {\n            \"questionId\": 1,\n            \"selectedOptionId\": 1\n        }\n    ]\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "Eliminar Examen",
+            "request": {
+              "method": "DELETE",
+              "url": "{{baseUrl}}/api/exams/delete/1"
+            }
+          },
+          {
+            "name": "Obtener Exámenes por Curso",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/exams/course/1"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Certificados",
+        "item": [
+          {
+            "name": "Generar Certificado",
+            "request": {
+              "method": "POST",
+              "url": "{{baseUrl}}/api/certificates/generate/1?userId=1"
+            }
+          },
+          {
+            "name": "Descargar Certificado",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/certificates/download/1"
+            }
+          },
+          {
+            "name": "Obtener Certificados de Usuario",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/certificates/user/1"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Reportes",
+        "item": [
+          {
+            "name": "Obtener Reporte de Progreso",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/reports/progress/1?format=json"
+            }
+          },
+          {
+            "name": "Obtener Reporte de Progreso en CSV",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/reports/progress/1?format=csv"
+            }
+          },
+          {
+            "name": "Obtener Reporte de Progreso en PDF",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/reports/progress/1?format=pdf"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Notificaciones",
+        "item": [
+          {
+            "name": "Enviar Email",
+            "request": {
+              "method": "GET",
+              "url": "{{baseUrl}}/api/notifications/send-email",
+              "query": [
+                {
+                  "key": "to",
+                  "value": "usuario@ejemplo.com"
+                },
+                {
+                  "key": "subject",
+                  "value": "Asunto del correo"
+                },
+                {
+                  "key": "text",
+                  "value": "Contenido del correo"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "variable": [
+      {
+        "key": "baseUrl",
+        "value": "http://localhost:8080"
+      }
+    ]
+  }
